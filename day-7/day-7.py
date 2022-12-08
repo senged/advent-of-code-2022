@@ -33,22 +33,16 @@ class Directory:
                 ValueError("ERROR: different size found for file '{name}': orig ({self.files[name]}), new ({size})")
         
 
-    def sum_file_sizes(self):
-        #return sum(self.files)
+
+    def total(self):
         sum = 0
         for value in self.files.values():
             sum += value
-        return sum
-
-    def sum_descendant_file_sizes(self):
-        x = 0
+        
         for child in self.children:
-            x = child.sum_file_sizes()
-            x += child.sum_descendant_file_sizes()
-        return x
-
-    def total(self):
-        return self.sum_file_sizes() + self.sum_descendant_file_sizes()
+            sum += child.total() 
+        
+        return sum
 
     def ensure_child(self, childName):
         #self.children.append(child)
@@ -82,18 +76,6 @@ class Directory:
         return hash(self.get_path())
 
 
-# add a child to a directory
-# def add_child(parent, child):
-    
-#     if child not in parent.children:
-#         newChild = Directory(child, parent)
-#         parent.children.append(newChild)
-#         return newChild
-#     else:
-#         print(f"Child '{child.name}' already exists.")
-#         return parent.children[child]
-    
-
 
 def recurse_flatten_dirs(parent):
     descendants = []
@@ -109,13 +91,15 @@ def recurse_flatten_dirs(parent):
 
 def print_recursive_hierarchy(parent, indent=0):
 
-    print('  ' * indent + str(parent.name))
+    #print('- ' + '  ' * indent + str(parent.name))
+    print(f"{'  ' * (indent)}- {parent.name} (dir)")
+
     for child in parent.children:
         #print('  ' * (indent) + str(child.name))
         print_recursive_hierarchy(child, indent + 1)
     
-    for f in parent.files:
-        print('  ' * (indent) + str(f))
+    for f in parent.files.items():
+        print(f"{'  ' * (indent + 1)}- {str(f[0])} (file, size={f[1]})")
         
 
 
@@ -169,26 +153,27 @@ for line in inputLines:
 
 
 # Print recurse
-print_recursive_hierarchy(root)
+#print_recursive_hierarchy(root)
 
 
 flatDirs = recurse_flatten_dirs(root)
-print(flatDirs)
+#print(flatDirs)
 
 filter = 100000
 filteredDirs = []
 for dir in flatDirs:
     total = dir.total()
     if (total <= filter):
-        print(f"{dir.name}: {total} *")
+        #print(f"{dir.name}: {total} *")
         filteredDirs.append(dir)
     else:
-        print(f"{dir.name}: {total}")
+        #print(f"{dir.name}: {total}")
+        pass
         
 
 
-answer = sum(dir.total() for dir in filteredDirs)
-print(f"The answer is: {answer}")
+smallerDirs = sum(dir.total() for dir in filteredDirs)
+print(f"The answer is: {smallerDirs}")
 x = 0
 for f in filteredDirs:
     x += f.total()
@@ -199,5 +184,52 @@ print(x)
 #     Answer: 95437 (correct)
 #
 # Puzzle
-#   Expected: ?
-#     Actual: 1583249 (WRONG - says answer is too high. I give up.)
+#     Actual: 1491614 (correct)
+
+
+# ================================================
+# Part 2
+# Find the smallest directory to delete to free up
+# and reach the required free space needed. Return
+# the size of that deleted directory.
+
+totalSpace = 70000000
+freeNeeded = 30000000
+
+totalUsed = root.total()
+freeInitial = totalSpace - totalUsed
+toFree =  freeNeeded - freeInitial
+
+# Print total, needed, used, and toFree
+print(f"Total: {totalSpace}, Needed: {freeNeeded}, Used: {totalUsed}, ToFree: {toFree}")
+
+# Find all directories in flatDir that are greater than freeNeeded
+# Sort by size
+# Delete the smallest one
+# Recalculate the total size of all directories
+# If the total size is greater than totalSpace, repeat
+# If the total size is less than totalSpace, return the size of the deleted directory
+
+# Sort by size
+
+sortedDirs = sorted(flatDirs, key=lambda x: x.total(), reverse=False)
+print(sortedDirs[0])
+
+# Delete the ones that are smaller than freeNeeded
+candidateDirs = []
+for dir in flatDirs:
+    if dir.total() >= toFree:
+        candidateDirs.append(dir)
+        #print(f"Adding {dir.name} ({dir.total()}) to candidate list")
+
+# Print candiate dirs in ascending order by total(), size first, name aligned
+for dir in candidateDirs:
+    print(f"{dir.total():<10} {dir.name}")
+
+
+smallestDir = min(candidateDirs, key=lambda x: x.total())
+
+
+print(f"Smallest dir to free and meet requirement: {smallestDir.name} ({smallestDir.total()})")
+newUsed = totalUsed - smallestDir.total()
+print(f"New available {newUsed}. Is it enough? {newUsed >= freeNeeded}")
